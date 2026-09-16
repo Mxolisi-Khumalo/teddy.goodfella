@@ -1,0 +1,7 @@
+# Normalise the working tree to LF regardless of core.autocrlf, which is true at
+# system level on the current dev machine.
+#
+# Prettier's endOfLine default is "lf". Without this, a fresh clone checks out CRLF
+# and `npm run format:check` fails on every file — a false failure that would make
+# the CLAUDE.md definition of done unreachable until someone reformatted the repo.
+* text=auto eol=lf

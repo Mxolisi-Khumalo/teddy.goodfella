@@ -1,0 +1,12 @@
+@import 'tailwindcss';
+
+/* Design tokens live here, in CSS, not in a JS config file.
+ *
+ * Palettes are emitted server-side as custom properties from the theme content
+ * object and consumed through this @theme block (CLAUDE.md -> Stack conventions ->
+ * Theming). Theme is never read in client JS on first paint: that is a hydration
+ * mismatch and a flash of the wrong colour.
+ *
+ * Empty until the palette in PROJECT.md §5 is confirmed with the human. */
+@theme {
+}
