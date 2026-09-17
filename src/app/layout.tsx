@@ -1,11 +1,15 @@
 import type { ReactNode } from 'react'
 
+import { MotionProvider } from '@/motion'
+
 import './globals.css'
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <MotionProvider>{children}</MotionProvider>
+      </body>
     </html>
   )
 }
