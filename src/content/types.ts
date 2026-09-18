@@ -118,6 +118,24 @@ export interface MediaAsset extends TenantScoped {
   readonly source: string
 }
 
+/**
+ * The three separated photographic planes of the hero (PROJECT.md section 4).
+ *
+ * Named rather than an array because the three are not interchangeable: each has a
+ * distinct role in the scroll reveal and a distinct treatment, and code that indexed
+ * into a list would have to know that layers[0] means "foreground" anyway.
+ *
+ * Lives in content because hard rule 1 forbids a component holding an image URL.
+ */
+export interface HeroLayers extends TenantScoped {
+  /** Cut-out of Teddy. Requires alpha. Portrait — it is a figure, not a plate. */
+  readonly foreground: MediaAsset
+  /** Stage elements, light beams, haze. Requires alpha; sits over the back plate. */
+  readonly mid: MediaAsset
+  /** Crowd photograph from a real gig. Opaque; this is the ground. */
+  readonly back: MediaAsset
+}
+
 // ---------------------------------------------------------------------------
 // Profile
 // ---------------------------------------------------------------------------
@@ -249,6 +267,7 @@ export interface SiteContent {
   readonly profile: Profile
   readonly theme: Theme
   readonly palettes: readonly Palette[]
+  readonly hero: HeroLayers
   readonly events: readonly Event[]
   readonly stories: readonly Story[]
 }

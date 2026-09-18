@@ -83,6 +83,13 @@ Three layers, scroll-driven:
 - **Foreground:** cut-out of Teddy, background removed. Scales down, blurs, desaturates slightly.
 - **Mid:** stage elements, light beams, haze. Opacity and blur shift between states.
 - **Back:** crowd photograph from a real gig. Scales up and forward, sharpens.
+  **Viewpoint is load-bearing:** this frame must be shot *from within the audience,
+  facing the stage* — silhouetted backs of heads in the near foreground, phones up,
+  stage lit in the distance. A plate shot from the performer's position (crowd faces
+  looking into the lens) reads correctly at 0% and then contradicts the whole
+  narrative at 100%, because it leaves the visitor standing on stage for the entire
+  scroll. If the 100% frame does not put bodies between the viewer and Teddy, the
+  reveal has not happened.
 
 Cursor drives **counter-parallax** — each layer offsets at a different rate, foreground
 most, background least. On mobile, device orientation drives the same offsets.
@@ -199,7 +206,11 @@ The gating dependency. Nothing in the hero can be finished without these.
 - 3–5 performance shots **from a real camera** — not pulled off Instagram.
   Compressed social JPEGs look terrible at full-bleed hero scale and this is where
   otherwise good sites get ruined.
-- Crowd photographs from front of stage, several angles
+- Crowd photographs taken **from within the audience, facing the stage** — nearest
+  bodies filling the lower third, backlit by the stage. Several angles. Note this is
+  *not* "from the front of the stage": that is the performer's viewpoint and is the
+  wrong shot for the hero's 100% state (see §4)
+- One crowd frame at >=3800px wide, if a 1:1-sharp payoff frame at DPR2 matters
 - One clean full-body shot on a plain background, for the cut-out
 - ~10 min ambient crowd audio
 - Event history: venue, city, date, role, for the calendar

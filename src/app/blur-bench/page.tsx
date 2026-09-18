@@ -1,5 +1,11 @@
 'use client'
 
+/* eslint-disable @next/next/no-img-element -- This rig measures the raw cost of
+ * compositing a full-bleed <img>. next/image would add its own wrapper and sizing
+ * behaviour to every sample, which is not what is under test. The optimiser is off
+ * project-wide anyway (next.config.ts images.unoptimized, hard rule 3), so the
+ * rule's LCP/bandwidth advice does not apply here. */
+
 import { useEffect, useRef, useState } from 'react'
 
 import { r2Url } from '@/lib/r2'
@@ -36,13 +42,22 @@ interface Sample {
   readonly over33ms: number
 }
 
-type Apply = (t: number, nodes: Record<string, HTMLElement>) => void
+/**
+ * Named rather than a Record: an index signature under `noUncheckedIndexedAccess`
+ * makes every lookup `HTMLElement | undefined`, which would mean a null check per
+ * style write inside the measured loop — measuring the guard, not the property.
+ */
+interface BenchNodes {
+  readonly sharp: HTMLElement
+  readonly second: HTMLElement
+  readonly upscaled: HTMLElement
+}
 
 interface Technique {
   readonly id: string
   readonly what: string
-  readonly apply: Apply
-  readonly reset: (nodes: Record<string, HTMLElement>) => void
+  readonly apply: (t: number, nodes: BenchNodes) => void
+  readonly reset: (nodes: BenchNodes) => void
 }
 
 /** Techniques share one DOM so no run pays another's layout cost. */
@@ -131,7 +146,7 @@ export default function BlurBenchPage() {
     const upscaled = upscaledRef.current
     if (sharp === null || second === null || upscaled === null) return
 
-    const nodes: Record<string, HTMLElement> = { sharp, second, upscaled }
+    const nodes: BenchNodes = { sharp, second, upscaled }
     let cancelled = false
 
     const runOne = (technique: Technique) =>

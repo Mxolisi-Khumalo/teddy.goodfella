@@ -10,6 +10,8 @@ export { ReducedMotionProvider, useReducedMotion } from './ReducedMotionProvider
 export { LenisProvider } from './LenisProvider'
 export { ScrollRefresh } from './ScrollRefresh'
 export { ScrollScene } from './ScrollScene'
+export { useCursorParallax } from './useCursorParallax'
+export type { CursorParallaxOptions } from './useCursorParallax'
 export type { ScrollSceneProps } from './ScrollScene'
 export { useScrollProgress } from './useScrollProgress'
 export type { ScrollProgressOptions } from './useScrollProgress'

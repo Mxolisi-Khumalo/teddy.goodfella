@@ -10,3 +10,261 @@
  * Empty until the palette in PROJECT.md §5 is confirmed with the human. */
 @theme {
 }
+
+/* ==========================================================================
+   HERO — 2.5D stage-to-crowd scroll reveal (PROJECT.md §4)
+   ==========================================================================
+
+   PROVISIONAL COLOUR, AND ONLY POLARITY.
+
+   §5 is unapproved, so no hue is invented here. These four values commit to one
+   thing only: a dark photographic ground with a light opaque surface for the
+   notice. That polarity is not cosmetic — the notice's legibility mechanism
+   depends on an opaque light plate over moving photography, so §5 sign-off could
+   overturn it rather than merely re-hue it. Confirm the polarity, not just the
+   palette.
+
+   Deliberately achromatic and pure: a *tinted* near-black is a named guardrail
+   tell, so the scrim is black-with-alpha over photography rather than a fake ink.
+   Every one of these is replaced by the real token in the theming task.  */
+.hero {
+  --hero-scrim: 0 0 0;
+  --hero-on-photo: 255 255 255;
+  --hero-surface: 244 243 240;
+  --hero-on-surface: 24 26 33;
+
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+  background-color: rgb(var(--hero-scrim));
+}
+
+.hero__stage {
+  position: absolute;
+  inset: 0;
+}
+
+/* --- planes ---------------------------------------------------------------
+   One promoted layer per plane. The scroll timeline writes xPercent/yPercent
+   and scale; the cursor writes x/y. GSAP keeps those as separate components of
+   a single transform, so neither needs a nested wrapper — and a wrapper whose
+   child also scaled would force the parent's whole tile set to repaint every
+   frame, which is the difference between 60fps and rough.  */
+.hero-plane {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+  transform-origin: 50% 50%;
+}
+
+.hero-plane__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+}
+
+/* The soft twin: same file, rasterised into a small box then scaled back up, so
+   the GPU's own filtering blurs it. No CSS filter is animated anywhere in this
+   hero. Swapping to a real pre-blurred variant means changing only its `src`. */
+.hero-plane__img--soft {
+  width: 12.5%;
+  height: 12.5%;
+  transform: scale(8);
+  transform-origin: 0 0;
+  opacity: 0;
+}
+
+.hero-plane[data-plane='back'] {
+  z-index: 0;
+}
+.hero-plane[data-plane='mid'] {
+  z-index: 1;
+}
+.hero-plane[data-plane='fore'] {
+  z-index: 2;
+}
+
+/* --- the 0% composition, in CSS ------------------------------------------
+   This is the state the server renders, so first paint matches the timeline's
+   start and there is no jump when GSAP takes over. GSAP then writes inline
+   styles from here; under reduced motion it never runs, so the media query at
+   the bottom of this block is what shows instead.  */
+.hero-plane[data-plane='back'] {
+  transform: scale(1);
+}
+/* Bottom node of every pair stays opaque; only the soft node on top cross-fades.
+   Keeps total coverage at 100% through the whole scroll — see Hero.tsx. */
+.hero-plane[data-plane='back'] [data-node='sharp'] {
+  opacity: 1;
+}
+.hero-plane[data-plane='back'] [data-node='soft'] {
+  opacity: 1;
+}
+
+.hero-plane[data-plane='mid'] {
+  transform: scale(1);
+  opacity: 0.85;
+}
+
+/* Cropped off the bottom AND left edges. A figure fully contained in frame reads
+   as someone standing in front of you; a figure cropped by your own viewport
+   edges reads as your own body. This, not scale, is what makes 0% first-person. */
+.hero-plane[data-plane='fore'] {
+  transform: translate(-18%, 14%) scale(1.15);
+}
+.hero-plane[data-plane='fore'] [data-node='soft'] {
+  opacity: 0;
+}
+
+/* --- type and notice ----------------------------------------------------- */
+.hero__type {
+  position: absolute;
+  z-index: 4;
+  right: 4rem;
+  bottom: 6rem;
+  max-width: 40ch;
+  text-align: right;
+  color: rgb(var(--hero-on-photo));
+  text-shadow: 0 1px 24px rgb(var(--hero-scrim) / 0.55);
+}
+
+.hero__name {
+  font-size: clamp(2.5rem, 7vw, 6rem);
+  font-weight: 700;
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+}
+
+.hero__persona {
+  margin-top: 0.5rem;
+  font-size: clamp(1rem, 1.6vw, 1.5rem);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.hero__notice {
+  position: absolute;
+  z-index: 4;
+  bottom: 3rem;
+  left: 4rem;
+  opacity: 0;
+}
+
+/* Opaque, square-cut, no radius and no shadow: the guardrails ban identical
+   rounded cards with one border-radius on everything, and an opaque plate is the
+   only way to hold contrast over photography whose luminance moves as it scales. */
+.hero-notice {
+  min-width: 22rem;
+  max-width: 28rem;
+  padding: 1.25rem 1.5rem;
+  background-color: rgb(var(--hero-surface));
+  color: rgb(var(--hero-on-surface));
+  border: 1px solid rgb(var(--hero-on-surface) / 0.9);
+}
+
+.hero-notice__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* Tabular figures so reference numbers and dates align like ledger rows. */
+.hero-notice__ref,
+.hero-notice__line {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.hero-notice__ref {
+  margin-top: 0.5rem;
+  font-weight: 600;
+}
+
+.hero-notice__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.875rem;
+}
+
+/* A stamp carries status, which is information, so it earns its tracked caps.
+   Set at 20px/700: above the WCAG large-text threshold (18.66px for bold), which
+   is what makes a coloured fill legal here, and large enough to read as a stamp
+   rather than as an eyebrow label. */
+.hero-stamp {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  padding: 0.25rem 0.5rem;
+  border: 2px solid currentColor;
+  text-transform: uppercase;
+}
+
+.hero-notice__action {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.hero-notice__action:focus-visible,
+.hero-notice__action:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* --- reduced motion: a third, purpose-composed frame ---------------------
+   Not the 0% frame and not the 100% frame. A wide shot from the back of the
+   room: the crowd sharp and settled, Teddy small, SHARP and legible on stage,
+   and both the type and the notice readable at once — which never happens
+   during the animation, because there the two hand over to each other.
+
+   Done in CSS rather than by seeking the timeline, because the hero is the LCP
+   element and this must be correct on first paint with no JS involved. The
+   motion layer's own reduced-motion behaviour is left untouched for every other
+   scene.  */
+@media (prefers-reduced-motion: reduce) {
+  .hero {
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .hero-plane[data-plane='back'] {
+    transform: scale(1.14);
+  }
+  .hero-plane[data-plane='back'] [data-node='sharp'] {
+    opacity: 1;
+  }
+  .hero-plane[data-plane='back'] [data-node='soft'] {
+    opacity: 0;
+  }
+
+  .hero-plane[data-plane='mid'] {
+    transform: scale(1.03);
+    opacity: 0.5;
+  }
+
+  /* Small, centred and sharp — a deliberate composition, not a frozen keyframe. */
+  .hero-plane[data-plane='fore'] {
+    transform: translate(-2%, 6%) scale(0.45);
+  }
+  .hero-plane[data-plane='fore'] [data-node='sharp'] {
+    opacity: 1;
+  }
+  .hero-plane[data-plane='fore'] [data-node='soft'] {
+    opacity: 0;
+  }
+
+  .hero__type {
+    opacity: 1;
+  }
+
+  /* The notice is present from the start here: with no scroll reveal to hand
+     over to it, hiding it would mean the booking action never appears. */
+  .hero__notice {
+    opacity: 1;
+  }
+}

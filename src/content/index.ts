@@ -9,6 +9,7 @@
 import { teddyContent } from './teddy'
 import type {
   Event,
+  HeroLayers,
   IsoDateTime,
   Profile,
   ResolvedTheme,
@@ -19,6 +20,7 @@ import type {
 export type {
   ColourValue,
   Event,
+  HeroLayers,
   EventId,
   EventStatus,
   IsoDateTime,
@@ -67,6 +69,15 @@ function nowIso(): IsoDateTime {
 
 export async function getProfile(): Promise<Profile> {
   return content.profile
+}
+
+/**
+ * The three hero planes. Separate from getProfile() because the hero is a
+ * composition, not biography, and Phase 2 will source these from the media
+ * collection rather than the profile document.
+ */
+export async function getHeroLayers(): Promise<HeroLayers> {
+  return content.hero
 }
 
 /**

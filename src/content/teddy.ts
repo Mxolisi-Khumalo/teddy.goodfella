@@ -1,3 +1,5 @@
+import { r2Url } from '@/lib/r2'
+
 import type { SiteContent } from './types'
 
 /**
@@ -86,6 +88,62 @@ export const teddyContent: SiteContent = {
       muted: '',
     },
   ],
+
+  /**
+   * The three hero planes. Dimensions and byte sizes below are measured from the
+   * actual objects in R2, not estimated.
+   *
+   * `blurDataUrl` values are generated from the real objects by
+   * `scripts/generate-blur-placeholders.mjs`. Re-run it whenever a layer is
+   * replaced — they are derived data, not authored.
+   */
+  hero: {
+    tenantId: TENANT_ID,
+    foreground: {
+      tenantId: TENANT_ID,
+      id: 'hero-fg-teddy-cutout',
+      url: r2Url('hero-fg-teddy-cutout.placeholder.webp'),
+      alt: 'Teddy Goodfella performing, cut out from its background',
+      // Portrait 3:4 — a figure, not a full-bleed plate. 234.0 kb.
+      width: 1800,
+      height: 2400,
+      blurDataUrl:
+        'data:image/webp;base64,UklGRjABAABXRUJQVlA4WAoAAAAQAAAADwAAFAAAQUxQSJEAAAARb6CgbSQUvwJmiIgA5WxaReUPhNta29bk/f8JJAvoAtgCTu3QO7VTO73T+wKxDXL+DZJp0BEi+h+a4FGDAJxrjax4RXZdBQAil953lrxOTQKofedZNQgiF9/bJCgKVijPWYGCHcppgiJpBbKnEEQugaxTQN363ovNXDdPXo/H++n+7/H4UvvrQ46Aa/3xMkcBAFZQOCB4AAAAcAMAnQEqEAAVAD7dWqZMqKUjojAIARAbiWoAADHsXci6cZgAAP51uWlpkcvYK7955p9ddNGWH27Ver5M8WC1bHltCkzmUYMdxP9WUV3C7Zw/j80mVWv8mA8UF7Cb/4sHlpyXwkIm32fsjgh1fbXf076/Pt+n4AAA',
+      credit: null,
+      source:
+        'Placeholder supplied by Teddy, 2026-09. Awaiting the real camera cut-out (PROJECT.md §9).',
+    },
+    mid: {
+      tenantId: TENANT_ID,
+      id: 'hero-mid-stage',
+      url: r2Url('hero-mid-stage.placeholder.webp'),
+      alt: 'Stage lighting and haze',
+      // 16:9, alpha channel present so it composites over the crowd plate. 85.2 kb.
+      width: 2560,
+      height: 1440,
+      blurDataUrl:
+        'data:image/webp;base64,UklGRroAAABXRUJQVlA4WAoAAAAQAAAADwAACAAAQUxQSEwAAAARV6CwbRsUFgcREbSshL80MIhtKwo0WBpABWgAFYywRLCCFTSCPe1wb0T/c99YowS6NnJANcVAThmMNqsW65qOvpjXgXIe9+/hA18AVlA4IEgAAACQAQCdASoQAAkAAwBSJYgCdADT/AAA+xYKZWaXwqHQEvl2zzocMLWwJ4Xz7uliICz+sI/H2FnjNkrsrH2jZWtII3gOzq8AAAA=',
+      credit: null,
+      source: 'Placeholder supplied by Teddy, 2026-09.',
+    },
+    back: {
+      tenantId: TENANT_ID,
+      id: 'hero-back-crowd',
+      url: r2Url('hero-back-crowd-from-within.placeholder.webp'),
+      alt: 'His crowd, seen from within the audience looking toward the stage',
+      // 16:9, opaque. 236.2 KiB. Shot FROM WITHIN the audience facing the stage:
+      // silhouetted backs of heads near, phones up, stage lit in the distance. The
+      // viewpoint is the whole point — a plate shot from the performer's position
+      // keeps the visitor on stage at 100% and contradicts the narrative.
+      width: 2560,
+      height: 1440,
+      blurDataUrl:
+        'data:image/webp;base64,UklGRjIAAABXRUJQVlA4ICYAAACQAQCdASoQAAkAAwBSJZQAAudZfggA/uxRtKDmUJNqJ+dlgQAAAA==',
+      credit: null,
+      source:
+        'Placeholder supplied by Teddy, 2026-09, replacing an earlier plate shot from the stage. Awaiting the real from-within-the-crowd camera frame (PROJECT.md §9).',
+    },
+  },
 
   /**
    * Red Bull Turn It Up, 2025 — the brand's first South African edition and the
