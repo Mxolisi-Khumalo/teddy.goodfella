@@ -2,41 +2,37 @@
 
 /* Design tokens live here, in CSS, not in a JS config file.
  *
- * Palettes are emitted server-side as custom properties from the theme content
- * object and consumed through this @theme block (CLAUDE.md -> Stack conventions ->
- * Theming). Theme is never read in client JS on first paint: that is a hydration
- * mismatch and a flash of the wrong colour.
+ * The five role values are emitted server-side as custom properties by
+ * <ThemeStyle>, from the theme content object. This block only *maps* them into
+ * Tailwind's colour scale, so `bg-ink` / `text-paper` resolve to whatever the server
+ * rendered. Nothing here hardcodes a colour: in Phase 5 the values arrive per tenant
+ * and only the :root declarations change.
  *
- * Empty until the palette in PROJECT.md §5 is confirmed with the human. */
+ * Palette signed off in PROJECT.md §5 on 2026-09-22. Contrast for every used pair is
+ * measured in NOTES.md, along with the two usage rules that fell out of it. */
 @theme {
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-seal: var(--seal);
+  --color-carnival: var(--carnival);
+  --color-muted: var(--muted);
+}
+
+/* Dark ground, hero to footer. Structural, per §5 — the notice's legibility depends
+   on a light plate over dark moving photography, so this is not a preference. */
+html {
+  background-color: var(--ink);
+  color-scheme: dark;
 }
 
 /* ==========================================================================
    HERO — 2.5D stage-to-crowd scroll reveal (PROJECT.md §4)
-   ==========================================================================
-
-   PROVISIONAL COLOUR, AND ONLY POLARITY.
-
-   §5 is unapproved, so no hue is invented here. These four values commit to one
-   thing only: a dark photographic ground with a light opaque surface for the
-   notice. That polarity is not cosmetic — the notice's legibility mechanism
-   depends on an opaque light plate over moving photography, so §5 sign-off could
-   overturn it rather than merely re-hue it. Confirm the polarity, not just the
-   palette.
-
-   Deliberately achromatic and pure: a *tinted* near-black is a named guardrail
-   tell, so the scrim is black-with-alpha over photography rather than a fake ink.
-   Every one of these is replaced by the real token in the theming task.  */
+   ========================================================================== */
 .hero {
-  --hero-scrim: 0 0 0;
-  --hero-on-photo: 255 255 255;
-  --hero-surface: 244 243 240;
-  --hero-on-surface: 24 26 33;
-
   position: relative;
   height: 100vh;
   overflow: hidden;
-  background-color: rgb(var(--hero-scrim));
+  background-color: var(--ink);
 }
 
 .hero__stage {
@@ -132,8 +128,11 @@
   bottom: 6rem;
   max-width: 40ch;
   text-align: right;
-  color: rgb(var(--hero-on-photo));
-  text-shadow: 0 1px 24px rgb(var(--hero-scrim) / 0.55);
+  color: var(--paper);
+  /* The display type sits over photography whose luminance moves as the plate
+     scales and sharpens, so it carries its own ink halo rather than relying on the
+     picture behind it. */
+  text-shadow: 0 1px 28px color-mix(in srgb, var(--ink) 80%, transparent);
 }
 
 .hero__name {
@@ -165,14 +164,15 @@
   min-width: 22rem;
   max-width: 28rem;
   padding: 1.25rem 1.5rem;
-  background-color: rgb(var(--hero-surface));
-  color: rgb(var(--hero-on-surface));
-  border: 1px solid rgb(var(--hero-on-surface) / 0.9);
+  background-color: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--ink);
 }
 
 .hero-notice__label {
   font-size: 0.875rem;
   font-weight: 600;
+  color: var(--muted);
 }
 
 /* Tabular figures so reference numbers and dates align like ledger rows. */
@@ -186,6 +186,14 @@
 .hero-notice__ref {
   margin-top: 0.5rem;
   font-weight: 600;
+}
+
+/* Hairline rule under the masthead line. Ink only — §5 specifies 1px hairline ink
+   rules, and gold would not clear 3:1 on paper anyway. */
+.hero-notice__label + .hero-notice__line,
+.hero-notice__ref {
+  border-top: 1px solid color-mix(in srgb, var(--ink) 25%, transparent);
+  padding-top: 0.5rem;
 }
 
 .hero-notice__actions {
@@ -205,18 +213,46 @@
   letter-spacing: 0.08em;
   line-height: 1;
   padding: 0.25rem 0.5rem;
+  /* Outline in the text colour, never in seal: the outline is what carries the
+     shape, and seal on paper is only 2.08:1. See NOTES.md. */
   border: 2px solid currentColor;
   text-transform: uppercase;
+}
+
+/* CONFIRMED — ink on a gold fill, 6.97:1. */
+.hero-stamp[data-stamp='confirmed'] {
+  background-color: var(--seal);
+  color: var(--ink);
+}
+
+/* SOLD OUT — paper on carnival, 3.40:1, legal at 20px/700 as large text. */
+.hero-stamp[data-stamp='sold out'] {
+  background-color: var(--carnival);
+  color: var(--paper);
+}
+
+/* PAST — filed, not announced. No fill; muted on paper is 4.99:1. */
+.hero-stamp[data-stamp='past'] {
+  color: var(--muted);
 }
 
 .hero-notice__action {
   font-size: 0.9375rem;
   font-weight: 600;
+  color: var(--ink);
   text-decoration: underline;
   text-underline-offset: 0.2em;
 }
 
-.hero-notice__action:focus-visible,
+/* Keyboard focus must be visible on the only interactive element in the hero
+   (Definition of done 5). Carnival earns its appearance here: it is a state, and an
+   outline is a graphical object at 3.40:1 on paper. */
+.hero-notice__action:focus-visible {
+  outline: 3px solid var(--carnival);
+  outline-offset: 3px;
+  text-decoration-thickness: 2px;
+}
+
 .hero-notice__action:hover {
   text-decoration-thickness: 2px;
 }

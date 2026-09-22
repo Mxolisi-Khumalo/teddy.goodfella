@@ -76,16 +76,14 @@ export const teddyContent: SiteContent = {
       // Provisional name, tied to the unconfirmed section 5 concept ("state
       // bureaucracy collided with carnival").
       name: 'Gazette Carnival',
-      // TODO: all five values await confirmation of PROJECT.md section 5, which says
-      // explicitly not to start visual work until the direction is confirmed. The
-      // guardrails constrain them already: `ink` must read as document ink and not a
-      // tinted near-black, and exactly one of hot Klopse pink or emerald is chosen
-      // for `carnival`.
-      ink: '',
-      paper: '',
-      seal: '',
-      carnival: '',
-      muted: '',
+      // Signed off 2026-09-22 (PROJECT.md §5). Contrast for every pair actually used
+      // is measured in NOTES.md; two usage rules fell out of it — `muted` is
+      // on-paper only, and `seal` is never a lone graphical object on `paper`.
+      ink: '#131A2E', // base ground. Deep document navy, 42% saturation — not a near-black.
+      paper: '#EFEBE1', // sheets. Warm official stock, not cream.
+      seal: '#C6A02E', // gold foil. Seals, stamps. Graphic use only.
+      carnival: '#E23E76', // Klopse pink. Sparing, graphic only, never body text.
+      muted: '#5C6475', // secondary text on paper.
     },
   ],
 
