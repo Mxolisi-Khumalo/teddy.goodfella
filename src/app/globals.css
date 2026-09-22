@@ -55,6 +55,11 @@
   inset: 0;
   will-change: transform;
   transform-origin: 50% 50%;
+  /* Only the opaque back plate carries a blur placeholder (set inline from content);
+     these rules just make it behave like one when present. */
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
 }
 
 .hero-plane__img {

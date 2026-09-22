@@ -15,7 +15,7 @@
 import sharp from 'sharp'
 
 const BASE =
-  process.env.NEXT_PUBLIC_R2_PUBLIC_URL ??
+  process.env.NEXT_PUBLIC_R2_MEDIA_URL ??
   'https://pub-960caae6ae364ea88e306376de83ca48.r2.dev'
 
 const KEYS = [

@@ -151,4 +151,4 @@ No task is complete until all of these pass:
 - When you learn something about this codebase worth keeping — a gotcha, a fix, a
   measurement — append it to `NOTES.md`.
 
-Transform channel ownership. Each animation system owns specific channels and never writes another's. Scroll timeline: scale, opacity. Cursor/orientation parallax: x, y. Static composition offsets: xPercent, yPercent. Pin start values with fromTo, never inherit a transform from CSS — GSAP decomposes it to px on first touch, making the start value viewport-dependent.
+Transform channel ownership. The Scroll timeline owns scale, opacity, xPercent, yPercent. Cursor/orientation parallax owns x, y exclusively — never write x/y from a timeline, and never write xPercent/yPercent from a pointer handler.. Cursor and orientation parallax own x and y exclusively. Never write x/y from a timeline; never write xPercent/yPercent from a pointer handler. Pin start values with fromTo rather than inheriting a transform from CSS — GSAP decomposes an existing CSS transform to px on first touch, making the start value viewport-dependent.

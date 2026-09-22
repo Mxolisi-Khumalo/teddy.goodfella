@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import { useRef } from 'react'
 
 import type { HeroLayers, MediaAsset } from '@/content'
@@ -84,6 +83,31 @@ const PARALLAX: Record<PlaneName, { readonly from: number; readonly to: number }
   fore: { from: 0, to: 26 },
 }
 
+/**
+ * Max rendered width of each plane as a fraction of the viewport, expressed for
+ * `sizes`. The planes are full-bleed but the timeline scales them, so the widest
+ * they are ever painted is viewport x max scale — 1.28 for back, 1.06 for mid,
+ * 1.15 for fore. Understating this makes the browser pick a variant it then has to
+ * upscale.
+ */
+const SHARP_SIZES: Record<PlaneName, string> = {
+  back: '128vw',
+  mid: '106vw',
+  fore: '115vw',
+}
+
+/**
+ * The soft twin's layout box is 12.5% of its plane, so it legitimately needs a far
+ * smaller variant. This is what makes the LCP paint cheap: at 0% the visible node on
+ * the back plane is the soft twin, and at 16vw on a 1440 screen at DPR2 the browser
+ * fetches the 768 rung (9.9 KiB AVIF) rather than the 2560 one (230.3 KiB).
+ */
+const SOFT_SIZES: Record<PlaneName, string> = {
+  back: '16vw',
+  mid: '14vw',
+  fore: '15vw',
+}
+
 function Plane({
   name,
   asset,
@@ -93,37 +117,71 @@ function Plane({
   asset: MediaAsset
   priority: boolean
 }) {
+  // Blur placeholder only on the opaque ground plate. Behind an alpha cut-out a
+  // blurred rectangle would show through every transparent pixel and stay there
+  // after load — so "blur placeholders on everything" cannot apply literally to the
+  // two alpha planes.
+  const blurBackground =
+    name === 'back' ? { backgroundImage: `url("${asset.blurDataUrl}")` } : undefined
+
   return (
-    <div className="hero-plane" data-plane={name}>
-      <Image
-        data-node="sharp"
-        className="hero-plane__img"
-        src={asset.url}
-        alt={asset.alt}
-        width={asset.width}
-        height={asset.height}
-        placeholder="blur"
-        blurDataURL={asset.blurDataUrl}
-        priority={priority}
-        draggable={false}
-      />
+    <div className="hero-plane" data-plane={name} style={blurBackground}>
+      <picture>
+        {asset.sources.map((source) => (
+          <source
+            key={source.type}
+            type={source.type}
+            srcSet={source.srcSet}
+            sizes={SHARP_SIZES[name]}
+          />
+        ))}
+        <img
+          data-node="sharp"
+          className="hero-plane__img"
+          src={asset.url}
+          alt={asset.alt}
+          width={asset.width}
+          height={asset.height}
+          sizes={SHARP_SIZES[name]}
+          // Always low, even on the LCP plane: the sharp plate is not visible until
+          // roughly 44% of the scroll, so it must not compete with the soft twin
+          // that is actually painted at 0%.
+          fetchPriority="low"
+          decoding="async"
+          draggable={false}
+        />
+      </picture>
+
       {/*
-        Soft twin. Same source, small layout box, scaled up in CSS — blurred by the
-        GPU's own filtering rather than by a filter the compositor has to run. Empty
-        alt because it is the same picture as the node above it.
+        Soft twin. Same ladder, but a small layout box scaled up in CSS — blurred by
+        the GPU's own filtering rather than by a filter the compositor has to run.
+        Empty alt because it is the same picture as the node above it.
       */}
-      <Image
-        data-node="soft"
-        className="hero-plane__img hero-plane__img--soft"
-        src={asset.url}
-        alt=""
-        width={asset.width}
-        height={asset.height}
-        placeholder="blur"
-        blurDataURL={asset.blurDataUrl}
-        aria-hidden
-        draggable={false}
-      />
+      <picture>
+        {asset.sources.map((source) => (
+          <source
+            key={`soft-${source.type}`}
+            type={source.type}
+            srcSet={source.srcSet}
+            sizes={SOFT_SIZES[name]}
+          />
+        ))}
+        <img
+          data-node="soft"
+          className="hero-plane__img hero-plane__img--soft"
+          src={asset.url}
+          alt=""
+          width={asset.width}
+          height={asset.height}
+          sizes={SOFT_SIZES[name]}
+          // This is the LCP element on the back plane — the visible node at 0%, and
+          // at 16vw it resolves to the 768 rung (9.9 KiB AVIF).
+          fetchPriority={priority ? 'high' : 'low'}
+          decoding="async"
+          aria-hidden
+          draggable={false}
+        />
+      </picture>
     </div>
   )
 }
@@ -287,8 +345,8 @@ export function Hero({
                   ? layers.mid
                   : layers.foreground
             }
-            // The back plate is the LCP candidate; the other two must not compete
-            // with it for the connection.
+            // Marks the LCP plane. Inside Plane this raises only the soft twin,
+            // which is the node actually painted at 0%.
             priority={planeName === 'back'}
           />
         ))}

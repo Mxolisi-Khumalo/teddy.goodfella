@@ -1,4 +1,4 @@
-import { r2Url } from '@/lib/r2'
+import { imageLadder, r2Url } from '@/lib/r2'
 
 import type { SiteContent } from './types'
 
@@ -112,6 +112,10 @@ export const teddyContent: SiteContent = {
       credit: null,
       source:
         'Placeholder supplied by Teddy, 2026-09. Awaiting the real camera cut-out (PROJECT.md §9).',
+      // The generated 1800 rung is deliberately NOT listed: its AVIF is 298.2 KiB,
+      // over the 250 KiB per-layer budget, and hard rule 4 treats that as a build
+      // failure. 1350 (133.2 KiB) is the top rung actually served.
+      sources: imageLadder('hero-fg-teddy-cutout.placeholder', [540, 900, 1350]),
     },
     mid: {
       tenantId: TENANT_ID,
@@ -125,6 +129,7 @@ export const teddyContent: SiteContent = {
         'data:image/webp;base64,UklGRroAAABXRUJQVlA4WAoAAAAQAAAADwAACAAAQUxQSEwAAAARV6CwbRsUFgcREbSshL80MIhtKwo0WBpABWgAFYywRLCCFTSCPe1wb0T/c99YowS6NnJANcVAThmMNqsW65qOvpjXgXIe9+/hA18AVlA4IEgAAACQAQCdASoQAAkAAwBSJYgCdADT/AAA+xYKZWaXwqHQEvl2zzocMLWwJ4Xz7uliICz+sI/H2FnjNkrsrH2jZWtII3gOzq8AAAA=',
       credit: null,
       source: 'Placeholder supplied by Teddy, 2026-09.',
+      sources: imageLadder('hero-mid-stage.placeholder', [768, 1280, 1920, 2560]),
     },
     back: {
       tenantId: TENANT_ID,
@@ -142,6 +147,10 @@ export const teddyContent: SiteContent = {
       credit: null,
       source:
         'Placeholder supplied by Teddy, 2026-09, replacing an earlier plate shot from the stage. Awaiting the real from-within-the-crowd camera frame (PROJECT.md §9).',
+      sources: imageLadder(
+        'hero-back-crowd-from-within.placeholder',
+        [768, 1280, 1920, 2560],
+      ),
     },
   },
 

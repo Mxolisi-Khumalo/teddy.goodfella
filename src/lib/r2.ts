@@ -13,7 +13,7 @@
  *
  * Read at module scope because `NEXT_PUBLIC_` values are inlined at build time.
  */
-const PUBLIC_BASE = process.env.NEXT_PUBLIC_R2_PUBLIC_URL
+const PUBLIC_BASE = process.env.NEXT_PUBLIC_R2_MEDIA_URL
 
 /**
  * Absolute URL for an R2 object key.
@@ -28,7 +28,7 @@ const PUBLIC_BASE = process.env.NEXT_PUBLIC_R2_PUBLIC_URL
 export function r2Url(key: string): string {
   if (PUBLIC_BASE === undefined || PUBLIC_BASE === '') {
     throw new Error(
-      'NEXT_PUBLIC_R2_PUBLIC_URL is not set. Copy .env.example to .env.local and fill it in.',
+      'NEXT_PUBLIC_R2_MEDIA_URL is not set. Copy .env.example to .env.local and fill it in.',
     )
   }
 
@@ -43,4 +43,36 @@ export function r2Url(key: string): string {
   const encoded = trimmedKey.split('/').map(encodeURIComponent).join('/')
 
   return `${PUBLIC_BASE.replace(/\/+$/, '')}/${encoded}`
+}
+
+/** MIME types of the ladder formats, in preference order. AVIF first. */
+const LADDER_FORMATS = [
+  { extension: 'avif', type: 'image/avif' },
+  { extension: 'webp', type: 'image/webp' },
+] as const
+
+/**
+ * Builds a `<picture>` source set for an object that has a generated ladder.
+ *
+ * Mirrors the naming in `scripts/generate-image-ladder.mjs` — `<base>.<width>.<ext>`
+ * — so a srcset is pure string composition with no manifest to drift out of sync.
+ *
+ * @param baseKey Object key without extension, e.g. 'hero-mid-stage.placeholder'.
+ * @param widths  Widths actually generated for this asset. Order is irrelevant; the
+ *                browser picks from the width descriptors, not from the list order.
+ */
+export function imageLadder(
+  baseKey: string,
+  widths: readonly number[],
+): readonly { readonly type: string; readonly srcSet: string }[] {
+  if (widths.length === 0) {
+    return []
+  }
+
+  return LADDER_FORMATS.map((format) => ({
+    type: format.type,
+    srcSet: widths
+      .map((width) => `${r2Url(`${baseKey}.${width}.${format.extension}`)} ${width}w`)
+      .join(', '),
+  }))
 }
