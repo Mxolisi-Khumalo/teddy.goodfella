@@ -150,5 +150,6 @@ No task is complete until all of these pass:
 - Conventional commits, one logical change per commit.
 - When you learn something about this codebase worth keeping — a gotcha, a fix, a
   measurement — append it to `NOTES.md`.
+- When a decision contradicts PROJECT.md, update PROJECT.md in the same change. A spec that disagrees with its implementation will be read in two months as drift.
 
 Transform channel ownership. The Scroll timeline owns scale, opacity, xPercent, yPercent. Cursor/orientation parallax owns x, y exclusively — never write x/y from a timeline, and never write xPercent/yPercent from a pointer handler.. Cursor and orientation parallax own x and y exclusively. Never write x/y from a timeline; never write xPercent/yPercent from a pointer handler. Pin start values with fromTo rather than inheriting a transform from CSS — GSAP decomposes an existing CSS transform to px on first touch, making the start value viewport-dependent.

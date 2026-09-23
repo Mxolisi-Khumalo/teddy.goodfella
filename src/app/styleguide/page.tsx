@@ -90,6 +90,91 @@ const PAIRS: readonly Pair[] = [
   },
 ]
 
+/**
+ * The type scale.
+ *
+ * Redaction constrains it: the family ships only 400 and 700, so the display cluster
+ * cannot use the 500/600 steps the first draft assumed — a 600 would be a browser
+ * synthesised weight, which is exactly the fake-bold the design would be paying a
+ * foundry to avoid. Public Sans is variable 100-900 and takes any weight asked of it.
+ *
+ * The gap between the clusters is deliberate: nothing exists between 3.5rem and
+ * 1.375rem, so a section cannot gradually escalate toward the hero.
+ */
+const SCALE = [
+  {
+    step: 'display-hero',
+    size: 'clamp(4rem, 13vw, 10.5rem)',
+    weight: 700,
+    tracking: '-0.035em',
+    leading: '0.84',
+    family: 'display',
+    note: 'hero name. LCP text.',
+  },
+  {
+    step: 'display-1',
+    size: 'clamp(2rem, 5vw, 3.5rem)',
+    weight: 700,
+    tracking: '-0.02em',
+    leading: '0.94',
+    family: 'display',
+    note: 'section proclamations',
+  },
+  {
+    step: 'display-2',
+    size: '1.5rem',
+    weight: 400,
+    tracking: '0',
+    leading: '1.2',
+    family: 'display',
+    note: 'persona line. 400 because Redaction has no 500.',
+  },
+  {
+    step: 'stamp',
+    size: '1.25rem',
+    weight: 700,
+    tracking: '0.08em',
+    leading: '1',
+    family: 'degraded',
+    note: 'status stamps. 20px/700 clears the WCAG large-text threshold.',
+  },
+  {
+    step: 'title',
+    size: '1.375rem',
+    weight: 600,
+    tracking: '-0.005em',
+    leading: '1.25',
+    family: 'body',
+    note: 'sheet headings',
+  },
+  {
+    step: 'body',
+    size: '1rem',
+    weight: 400,
+    tracking: '0',
+    leading: '1.6',
+    family: 'body',
+    note: 'body copy',
+  },
+  {
+    step: 'meta',
+    size: '0.875rem',
+    weight: 500,
+    tracking: '0.005em',
+    leading: '1.45',
+    family: 'body',
+    note: 'ledger rows and references. Tabular figures.',
+  },
+] as const
+
+const FAMILY_VAR = {
+  display: 'var(--font-display)',
+  degraded: 'var(--font-display-degraded)',
+  body: 'var(--font-body)',
+} as const
+
+const SPECIMEN = 'Teddy Goodfella — MCT-2025-003'
+
 const THRESHOLD: Record<Exclude<Usage, 'unused'>, number> = {
   body: BODY_TEXT_MIN,
   large: LARGE_TEXT_MIN,
@@ -242,6 +327,65 @@ export default async function StyleguidePage() {
           ))}
         </tbody>
       </table>
+
+      {/* --- type scale ------------------------------------------------------- */}
+      <h2 className="mt-10 text-lg font-bold">Type scale</h2>
+      <p className="mt-1 text-sm text-paper/70">
+        Redaction: 400 and 700 only — no variable font exists, so 500 and 600 are not
+        available in the display cluster. Public Sans: variable 100–900.
+      </p>
+
+      <div className="mt-4 space-y-8" data-testid="type-scale">
+        {SCALE.map((t) => (
+          <div key={t.step} className="border-t border-paper/15 pt-4">
+            <p className="text-xs text-paper/60">
+              {t.step} · {t.size} · {t.weight} · tracking {t.tracking} · leading{' '}
+              {t.leading} · {t.family} · {t.note}
+            </p>
+            <p
+              className="mt-2 overflow-hidden"
+              style={{
+                fontFamily: FAMILY_VAR[t.family],
+                fontSize: t.size,
+                fontWeight: t.weight,
+                letterSpacing: t.tracking,
+                lineHeight: t.leading,
+                fontVariantNumeric: t.step === 'meta' ? 'tabular-nums' : 'normal',
+              }}
+            >
+              {t.family === 'degraded' ? 'CONFIRMED SOLD OUT PAST' : SPECIMEN}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* --- both families at one size, for direct comparison ----------------- */}
+      <h2 className="mt-10 text-lg font-bold">The two families, same size</h2>
+      <div className="mt-4 space-y-4">
+        {(
+          [
+            ['display', 'Redaction 400'],
+            ['display', 'Redaction 700'],
+            ['degraded', 'Redaction 20 · 700'],
+            ['body', 'Public Sans 400'],
+            ['body', 'Public Sans 700'],
+          ] as const
+        ).map(([family, label], i) => (
+          <div key={label} className="border-t border-paper/15 pt-3">
+            <p className="text-xs text-paper/60">{label}</p>
+            <p
+              className="mt-1"
+              style={{
+                fontFamily: FAMILY_VAR[family],
+                fontSize: '2rem',
+                fontWeight: i === 0 || i === 3 ? 400 : 700,
+              }}
+            >
+              {family === 'degraded' ? 'CONFIRMED 2025' : 'Minister of Cape Town'}
+            </p>
+          </div>
+        ))}
+      </div>
 
       {/* --- material discipline --------------------------------------------- */}
       <h2 className="mt-10 text-lg font-bold">Sheet, stamps and rules</h2>

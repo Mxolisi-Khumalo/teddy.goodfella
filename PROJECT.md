@@ -123,9 +123,7 @@ would arrive at for any other brief.
 | `carnival` | Energy accent, used sparingly | Hot Klopse pink or emerald — one, not both |
 | `muted` | Secondary text, rules | Desaturated ink |
 
-**Type:** two families, clearly distinct. A condensed grotesque with signage or
-bureaucratic character for display, used as an *active design element* at large sizes.
-A clean, legible sans for body. Set a real type scale.
+**Type:** two clearly distinct families. Display: Redaction — a serif with graded print-degradation levels. Clean grade for headings and hero type; a degraded grade for stamps and seal overlays, so the document texture comes from the type rather than generated assets. Body: Public Sans, the US Web Design System typeface — a real government font for a mock ministry. Serif display against grotesque body gives the contrast; two grotesques would read muddy. This supersedes the earlier "condensed grotesque" direction.
 
 **Structural devices must encode information, not decorate.** Stamps carry status
 (CONFIRMED / SOLD OUT / PAST). Reference numbers carry event IDs. Ledger rows carry

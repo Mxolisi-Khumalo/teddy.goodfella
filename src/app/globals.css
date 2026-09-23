@@ -18,11 +18,21 @@
   --color-muted: var(--muted);
 }
 
+/* Families are NOT mapped into @theme. next/font/local already defines
+   --font-display / --font-display-degraded / --font-body on <html>, so a @theme entry
+   of the same name would be self-referential. The rules below consume the generated
+   properties directly, which also keeps the hashed filenames and the auto-generated
+   metric-matched fallback family intact. */
+
 /* Dark ground, hero to footer. Structural, per §5 — the notice's legibility depends
    on a light plate over dark moving photography, so this is not a preference. */
 html {
   background-color: var(--ink);
   color-scheme: dark;
+}
+
+body {
+  font-family: var(--font-body);
 }
 
 /* ==========================================================================
@@ -126,7 +136,11 @@ html {
   z-index: 4;
   right: 4rem;
   bottom: 6rem;
-  max-width: 40ch;
+  /* NOT `ch`: the unit resolves against this element's own 16px font, not the 96px
+     name inside it, so 40ch computed to 345px while the name needs ~430px. It
+     overflowed its container and only fitted the viewport by luck. Bound it by the
+     viewport minus both gutters instead. */
+  max-width: calc(100vw - 8rem);
   text-align: right;
   color: var(--paper);
   /* The display type sits over photography whose luminance moves as the plate
@@ -136,6 +150,7 @@ html {
 }
 
 .hero__name {
+  font-family: var(--font-display);
   font-size: clamp(2.5rem, 7vw, 6rem);
   font-weight: 700;
   line-height: 0.9;
@@ -143,9 +158,11 @@ html {
 }
 
 .hero__persona {
+  font-family: var(--font-display);
+  /* Redaction has only 400 and 700. 500 would synthesise a fake weight. */
+  font-weight: 400;
   margin-top: 0.5rem;
   font-size: clamp(1rem, 1.6vw, 1.5rem);
-  font-weight: 500;
   line-height: 1.2;
 }
 
@@ -213,6 +230,9 @@ html {
   letter-spacing: 0.08em;
   line-height: 1;
   padding: 0.25rem 0.5rem;
+  /* Grade 20 — the stamp reads as overprinted ink. Subset to uppercase and digits,
+     which is the whole of its job, hence 3.4 KiB. */
+  font-family: var(--font-display-degraded);
   /* Outline in the text colour, never in seal: the outline is what carries the
      shape, and seal on paper is only 2.08:1. See NOTES.md. */
   border: 2px solid currentColor;

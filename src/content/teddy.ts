@@ -94,6 +94,10 @@ export const teddyContent: SiteContent = {
    * `blurDataUrl` values are generated from the real objects by
    * `scripts/generate-blur-placeholders.mjs`. Re-run it whenever a layer is
    * replaced — they are derived data, not authored.
+   *
+   * Note the deliberate split in the bucket: the masters sit at the root, the
+   * generated responsive ladder under `hero/`. `url` therefore has no prefix and
+   * `sources` does.
    */
   hero: {
     tenantId: TENANT_ID,
@@ -113,7 +117,7 @@ export const teddyContent: SiteContent = {
       // The generated 1800 rung is deliberately NOT listed: its AVIF is 298.2 KiB,
       // over the 250 KiB per-layer budget, and hard rule 4 treats that as a build
       // failure. 1350 (133.2 KiB) is the top rung actually served.
-      sources: imageLadder('hero-fg-teddy-cutout.placeholder', [540, 900, 1350]),
+      sources: imageLadder('hero/hero-fg-teddy-cutout.placeholder', [540, 900, 1350]),
     },
     mid: {
       tenantId: TENANT_ID,
@@ -127,7 +131,7 @@ export const teddyContent: SiteContent = {
         'data:image/webp;base64,UklGRroAAABXRUJQVlA4WAoAAAAQAAAADwAACAAAQUxQSEwAAAARV6CwbRsUFgcREbSshL80MIhtKwo0WBpABWgAFYywRLCCFTSCPe1wb0T/c99YowS6NnJANcVAThmMNqsW65qOvpjXgXIe9+/hA18AVlA4IEgAAACQAQCdASoQAAkAAwBSJYgCdADT/AAA+xYKZWaXwqHQEvl2zzocMLWwJ4Xz7uliICz+sI/H2FnjNkrsrH2jZWtII3gOzq8AAAA=',
       credit: null,
       source: 'Placeholder supplied by Teddy, 2026-09.',
-      sources: imageLadder('hero-mid-stage.placeholder', [768, 1280, 1920, 2560]),
+      sources: imageLadder('hero/hero-mid-stage.placeholder', [768, 1280, 1920, 2560]),
     },
     back: {
       tenantId: TENANT_ID,
@@ -146,7 +150,7 @@ export const teddyContent: SiteContent = {
       source:
         'Placeholder supplied by Teddy, 2026-09, replacing an earlier plate shot from the stage. Awaiting the real from-within-the-crowd camera frame (PROJECT.md §9).',
       sources: imageLadder(
-        'hero-back-crowd-from-within.placeholder',
+        'hero/hero-back-crowd-from-within.placeholder',
         [768, 1280, 1920, 2560],
       ),
     },
