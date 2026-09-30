@@ -47,8 +47,22 @@ body {
 .hero {
   position: relative;
   height: 100vh;
+  /* Small viewport height: the height the viewport has with browser chrome EXPANDED.
+     On mobile Safari `100vh` is the large viewport, so anything anchored to the
+     bottom of it sits underneath the toolbar until the visitor scrolls — and the
+     booking action is the mobile conversion path, so it cannot be the thing hidden
+     behind chrome. `svh` over `dvh` deliberately: `dvh` changes as the toolbar
+     collapses, which would resize a pinned ScrollTrigger mid-scroll. */
+  height: 100svh;
   overflow: hidden;
   background-color: var(--ink);
+
+  /* How far each plane extends beyond the viewport on every side.
+     Load-bearing, not a safety margin: the planes are `inset: 0` and the parallax
+     layer translates them by up to `max(PARALLAX.*.to)` px, which on a plane sitting
+     at scale 1 would slide its own edge into frame and expose the ink ground as a
+     strip down the side. The overscan has to be at least the largest amplitude. */
+  --plane-overscan: 2rem;
 }
 
 .hero__stage {
@@ -64,7 +78,7 @@ body {
    frame, which is the difference between 60fps and rough.  */
 .hero-plane {
   position: absolute;
-  inset: 0;
+  inset: calc(-1 * var(--plane-overscan));
   will-change: transform;
   transform-origin: 50% 50%;
   /* Only the opaque back plate carries a blur placeholder (set inline from content);
@@ -108,9 +122,24 @@ body {
    This is the state the server renders, so first paint matches the timeline's
    start and there is no jump when GSAP takes over. GSAP then writes inline
    styles from here; under reduced motion it never runs, so the media query at
-   the bottom of this block is what shows instead.  */
+   the bottom of this block is what shows instead.
+
+   EVERY PLANE COMPOSITION USES THE INDEPENDENT `translate` AND `scale`
+   PROPERTIES, NOT THE `transform` SHORTHAND. This is not a style preference.
+   GSAP decomposes an existing `transform` into its own channels on first touch,
+   and it reads `transform` only — so a CSS `transform: translate(-18%, 14%)`
+   landed in the x/y channel as -75px/122px and stayed there for the whole
+   scroll, on top of the xPercent/yPercent the timeline was animating. The
+   foreground was doubly offset at 0% and 75px off-centre at 100%.
+
+   It was invisible on desktop because the cursor parallax owns x/y and
+   overwrote the residue on the first pointer move. On touch there was nothing
+   to overwrite it, which is how it surfaced. GSAP neutralises the independent
+   properties explicitly — it writes `translate: none; scale: none` alongside
+   its transform — so expressing first paint through them keeps the two
+   mechanisms from ever reading each other's values.  */
 .hero-plane[data-plane='back'] {
-  transform: scale(1);
+  scale: 1;
 }
 /* Bottom node of every pair stays opaque; only the soft node on top cross-fades.
    Keeps total coverage at 100% through the whole scroll — see Hero.tsx. */
@@ -122,7 +151,7 @@ body {
 }
 
 .hero-plane[data-plane='mid'] {
-  transform: scale(1);
+  scale: 1;
   opacity: 0.85;
 }
 
@@ -130,7 +159,8 @@ body {
    as someone standing in front of you; a figure cropped by your own viewport
    edges reads as your own body. This, not scale, is what makes 0% first-person. */
 .hero-plane[data-plane='fore'] {
-  transform: translate(-18%, 14%) scale(1.15);
+  translate: -18% 14%;
+  scale: 1.15;
 }
 .hero-plane[data-plane='fore'] [data-node='soft'] {
   opacity: 0;
@@ -283,6 +313,85 @@ body {
   text-decoration-thickness: 2px;
 }
 
+/* --- the tilt permission control -----------------------------------------
+   Rendered on iOS only, and only until the question has been answered. Opaque ink
+   rather than a translucent plate for the same reason the notice is opaque paper:
+   it sits over photography whose luminance moves, and paper-on-ink is 12.4:1 only
+   as long as the ink is actually there. */
+.hero-tilt {
+  position: absolute;
+  z-index: 5;
+  top: calc(1.25rem + env(safe-area-inset-top, 0px));
+  right: 1.25rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--paper);
+  background-color: var(--ink);
+  border: 1px solid color-mix(in srgb, var(--paper) 45%, transparent);
+}
+
+.hero-tilt:disabled {
+  color: var(--muted);
+}
+
+/* Touch-only control, but a Bluetooth keyboard on an iPad reaches it. */
+.hero-tilt:focus-visible {
+  outline: 3px solid var(--carnival);
+  outline-offset: 3px;
+}
+
+/* ==========================================================================
+   HERO — phone composition (PROJECT.md section 4)
+   ==========================================================================
+   Not the desktop layout at a smaller scale. Two numbers drive the rewrite:
+
+   - 4rem gutters are 33% of a 390px viewport. They become 1.25rem.
+   - `min-width: 22rem` on the notice plus a 4rem gutter is 416px, which is 26px
+     wider than the viewport. It did not scroll horizontally only because
+     `.hero { overflow: hidden }` was silently amputating the right border. The
+     notice stops having an intrinsic width here and spans the gutters instead.
+
+   Measured at 390x844 before the change: notice right edge at 416px, CTA bottom
+   at 775px. */
+@media (max-width: 40rem) {
+  .hero {
+    /* Max touch amplitude is 26 * 0.45 = 11.7px, so 2rem of overscan is 45px of
+       composited pixels per side that nothing ever uses. On a 390px viewport that
+       is 16% more area for the compositor to move every frame, which is exactly
+       the kind of cost a mid-range Android cannot absorb. */
+    --plane-overscan: 0.875rem;
+  }
+
+  .hero__type {
+    right: 1.25rem;
+    bottom: 5rem;
+    max-width: calc(100vw - 2.5rem);
+  }
+
+  /* Spans the gutters. `right` as well as `left` is what removes the intrinsic
+     width from the equation entirely — the sheet is now sized by the viewport, so
+     no future copy length can push it off the edge again. */
+  .hero__notice {
+    left: 1.25rem;
+    right: 1.25rem;
+    bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .hero-notice {
+    min-width: 0;
+    max-width: none;
+    padding: 1rem 1.125rem;
+  }
+
+  /* The stamp keeps its 20px/700 setting. It is above the WCAG large-text
+     threshold at that size, which is what makes the coloured fill legal, so
+     shrinking it to fit would silently break the contrast it was signed off on. */
+  .hero-notice__actions {
+    flex-wrap: wrap;
+  }
+}
+
 /* --- reduced motion: a third, purpose-composed frame ---------------------
    Not the 0% frame and not the 100% frame. A wide shot from the back of the
    room: the crowd sharp and settled, Teddy small, SHARP and legible on stage,
@@ -300,7 +409,7 @@ body {
   }
 
   .hero-plane[data-plane='back'] {
-    transform: scale(1.14);
+    scale: 1.14;
   }
   .hero-plane[data-plane='back'] [data-node='sharp'] {
     opacity: 1;
@@ -310,13 +419,14 @@ body {
   }
 
   .hero-plane[data-plane='mid'] {
-    transform: scale(1.03);
+    scale: 1.03;
     opacity: 0.5;
   }
 
   /* Small, centred and sharp — a deliberate composition, not a frozen keyframe. */
   .hero-plane[data-plane='fore'] {
-    transform: translate(-2%, 6%) scale(0.45);
+    translate: -2% 6%;
+    scale: 0.45;
   }
   .hero-plane[data-plane='fore'] [data-node='sharp'] {
     opacity: 1;
@@ -333,5 +443,36 @@ body {
      over to it, hiding it would mean the booking action never appears. */
   .hero__notice {
     opacity: 1;
+  }
+}
+
+/* --- reduced motion on a phone: the two absolute anchors collide -----------
+   The reduced-motion frame is the only state where the type and the notice are
+   both visible — during the animation they hand over to each other, so their
+   boxes are allowed to overlap. At 390px they do: the type sits 80px off the
+   bottom and the notice sheet is ~230px tall from 20px, so the name lands inside
+   the sheet.
+
+   Resolved by dropping both out of absolute positioning into a flow column.
+   The planes stay absolute, so the photographic composition is untouched — this
+   only restacks the two text blocks that the desktop frame can afford to place
+   independently and a phone cannot. */
+@media (prefers-reduced-motion: reduce) and (max-width: 40rem) {
+  .hero__stage {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 1.5rem;
+    padding: 1.25rem;
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .hero__type,
+  .hero__notice {
+    position: static;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    max-width: none;
   }
 }

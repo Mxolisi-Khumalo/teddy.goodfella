@@ -32,6 +32,22 @@ export interface ScrollSceneProps {
   readonly build?: (timeline: gsap.core.Timeline, scene: HTMLDivElement) => void
   readonly onProgress?: (progress: number) => void
   readonly className?: string
+  /**
+   * What this scene looks like under reduced motion.
+   *
+   * `'timeline-end'` (the default) seeks the timeline to its last frame — the right
+   * answer for a scene that reveals something, because the revealed state is the one
+   * worth keeping.
+   *
+   * `'stylesheet'` builds nothing and lets CSS render the scene. Required by any
+   * scene whose reduced-motion state is a PURPOSE-COMPOSED THIRD FRAME rather than
+   * either end of the animation, because seeking writes inline transforms and
+   * opacities, and an inline style beats a stylesheet rule — so the CSS frame would
+   * be silently overridden. Measured: the hero's `@media (prefers-reduced-motion)`
+   * block was entirely dead for this reason, including the rule keeping the name
+   * visible.
+   */
+  readonly staticFrame?: 'timeline-end' | 'stylesheet'
 }
 
 /**
@@ -43,6 +59,10 @@ export interface ScrollSceneProps {
  * ScrollTrigger and no pin — so the scene renders as the static composition it would
  * have finished on, in normal document flow. A consumer never has to reimplement
  * that, and cannot forget to.
+ *
+ * A scene that composes its own reduced-motion frame in CSS must opt out of that with
+ * `staticFrame="stylesheet"`, because seeking writes inline styles that beat the
+ * stylesheet.
  */
 export function ScrollScene({
   children,
@@ -53,6 +73,7 @@ export function ScrollScene({
   build,
   onProgress,
   className,
+  staticFrame = 'timeline-end',
 }: ScrollSceneProps) {
   const sceneRef = useRef<HTMLDivElement>(null)
 
@@ -79,6 +100,12 @@ export function ScrollScene({
       }
 
       if (prefersReducedMotion) {
+        // Building nothing is the point: no timeline means no inline styles, which
+        // is the only way a stylesheet frame survives.
+        if (staticFrame === 'stylesheet') {
+          return
+        }
+
         const timeline = gsap.timeline({ paused: true })
         buildRef.current?.(timeline, scene)
         timeline.progress(1).pause()
@@ -105,7 +132,7 @@ export function ScrollScene({
       buildRef.current?.(timeline, scene)
     },
     {
-      dependencies: [prefersReducedMotion, pin, scrub, start, end],
+      dependencies: [prefersReducedMotion, pin, scrub, start, end, staticFrame],
       revertOnUpdate: true,
       scope: sceneRef,
     },

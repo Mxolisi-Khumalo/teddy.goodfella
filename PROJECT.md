@@ -94,6 +94,26 @@ Three layers, scroll-driven:
 Cursor drives **counter-parallax** — each layer offsets at a different rate, foreground
 most, background least. On mobile, device orientation drives the same offsets.
 
+**The orientation half is permission-gated and must be treated as optional.** Measured
+2026-09-30: iOS 13+ requires `DeviceOrientationEvent.requestPermission()` from a user
+gesture, and Chrome 141 exposes the same gate — it is not an iOS quirk. Chrome
+auto-grants on a secure same-origin context, so the existing permission is read
+passively first and only a browser that genuinely needs a tap ever shows an
+affordance. Nothing is requested on load. A refusal is terminal for the session.
+So the hero has to be complete with no parallax at all: it is the only thing lost, and
+the scroll choreography, the type and the booking action are untouched by it.
+
+Amplitudes are scaled to 0.45 on touch. They are px and were tuned at 1440px, where
+18px is a 1.25% depth cue; the same 18px on a 390px screen is 4.6% and reads as a
+slide rather than as depth.
+
+**Phone composition is a rewrite, not a reflow.** Desktop's 4rem gutters are a third
+of a 390px viewport, and the notice's intrinsic width plus a gutter overflowed it. The
+sheet spans the gutters instead. The hero is sized in `svh`, not `vh`, because `vh` is
+mobile Safari's *large* viewport and the booking action would sit under the toolbar —
+the requirement is that the next engagement and the ticket CTA are both above the fold
+at 390px, since that is the mobile conversion path.
+
 The narrative: the visitor starts as Teddy and ends as a member of his audience.
 
 **Audio:** ~10 min ambient crowd loop, **muted by default**, one obvious tap/click to

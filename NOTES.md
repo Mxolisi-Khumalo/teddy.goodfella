@@ -96,3 +96,89 @@ Two constraints fell out of the maths and are now usage rules:
   AVIF-primary with WebP fallback. The hero planes use a raw `<picture>`;
   `@next/next/no-img-element` exempts `<img>` inside `<picture>`, so no disable is
   needed.
+
+## Mobile motion and device orientation
+
+- **GSAP folds a pre-existing CSS offset into its own `x`/`y` channel and never lets
+  go.** The foreground plane's 0% crop lived in CSS as `transform: translate(-18%,
+14%)` so first paint would be right. GSAP decomposed it to `-75.24px/122.08px` on
+  first touch; nothing in the timeline writes `x`/`y`, so that offset persisted
+  through the entire scroll _on top of_ the `xPercent`/`yPercent` being animated. The
+  plane was doubly offset at 0% and sat 75px left of centre at 100%.
+  Switching the CSS to the independent `translate`/`scale` properties does **not**
+  help — GSAP reads those too (it writes `translate: none; rotate: none; scale: none`
+  alongside its transform precisely because it has taken them over). The fix is one
+  `gsap.set(planes, { x: 0, y: 0 })` at timeline build: a `set`, never a tween, since
+  the parallax layer owns that channel and a tween would fight its `quickTo` every
+  frame.
+  **It was invisible on desktop** because the cursor parallax overwrites `x`/`y` on
+  the first pointer move. Touch has no pointer, which is the only reason it surfaced.
+- **A seeked timeline silently kills a CSS reduced-motion frame.** `ScrollScene` used
+  to seek to `progress(1)` under reduced motion, which writes inline transforms and
+  opacities — and an inline style beats a stylesheet rule. So the hero's entire
+  purpose-composed `@media (prefers-reduced-motion: reduce)` block was dead, including
+  the rule keeping the name visible: `opacity: 1` in the sheet, `opacity: 0` inline.
+  Hence `staticFrame="stylesheet"`, which builds no timeline at all. A scene that
+  composes its own reduced-motion frame in CSS must opt out of seeking.
+- **Orientation has no meaningful zero, so the baseline is captured, not assumed.**
+  Reading posture is 45–70° of beta; normalising against 0 pins the hero to its
+  extreme offset on load. The neutral point is the first sample, and it then follows
+  the visitor at `RECENTRE_RATE` (~4s constant) because gyros drift and so do arms.
+  Consequence worth knowing: the effect responds to _change_ in attitude, so a held
+  tilt decays back to centre rather than parking at the edge. Measured 0.854 → 0.048
+  over ~12s.
+- **The permission gate is not iOS-only.** Chrome 141 also exposes
+  `DeviceOrientationEvent.requestPermission`, and _resolves_ `'denied'` rather than
+  rejecting when the sensor is unavailable. It also fires exactly one
+  `deviceorientation` event with `beta`/`gamma` null after a denial — hence the null
+  guard. Reading the decision passively via `navigator.permissions.query({ name:
+'gyroscope' })` first is what keeps the tap-to-enable control off Android, where the
+  permission is auto-granted. `query` never prompts, so this is compatible with "no
+  permission prompt on load".
+- **`vh` is the wrong unit for a full-screen hero on a phone.** It is mobile Safari's
+  _large_ viewport, so a bottom-anchored booking CTA sits under the toolbar. `svh` is
+  the small viewport and is stable; `dvh` would resize a pinned ScrollTrigger as the
+  toolbar collapses.
+- **Full-bleed planes need overscan once anything translates them.** `inset: 0` plus a
+  parallax offset slides the plane's own edge into frame and exposes the ink ground.
+  Overscan must be at least the largest amplitude: 2rem desktop, 0.875rem on touch
+  (where the max offset is 26 × 0.45 = 11.7px, and 2rem there would be 16% more area
+  for the compositor to move every frame for nothing).
+- **The lean maths is verified in Node, not the browser** — `scripts/verify-lean.mjs`,
+  18 checks, imports the `.ts` source directly via Node's type stripping so the
+  asserted code is the shipped code. Necessary because the effect needs a gyroscope
+  and applying it runs on GSAP's ticker, i.e. on rAF, which a non-composited tab
+  suspends: the browser reports no movement whether the maths is right or wrong.
+
+## Perf: measured 2026-09-30
+
+- **Initial JS for `/` is 184.2 KiB gzipped on touch, 185.0 on desktop. Budget is
+  200 KiB, so this passes** — but only just, and the headroom is ~15 KiB.
+  Breakdown by chunk probe: react + react-dom 69.8, Next app-router runtime 47.1,
+  GSAP + ScrollTrigger 43.3 + 3.7, our own motion code plus Lenis 8.7 + 2.1,
+  turbopack runtime 3.7, misc 5.7.
+- **Measure what the browser FETCHES, not what the HTML references.** Scraping
+  `/_next/static/**.js` out of the served markup gives 222.8 KiB and a false budget
+  failure: `0cz1d0mv5g_q7.js` (38.6 KiB gzip) is listed in the markup and never
+  requested. The reliable method is `performance.getEntriesByType('resource')` in the
+  live page, then gzip those files off disk.
+- **The one reducible item is GSAP + ScrollTrigger + Lenis (~58 KiB).** First paint
+  does not need any of it, because the 0% composition is pure CSS — effect-gating the
+  motion layer the way `CursorLayer` is gated would leave ~126 KiB. Worth doing before
+  real photography and Layout B eat the remaining headroom.
+- **Hero imagery at 390px/DPR2 is 156.3 KiB over six requests** — back 34.4 + 9.9, mid
+  17.4 + 12.2, fg 61.4 + 21.0 (sharp plate and soft twin per plane). Well inside the
+  1.2 MB payload and 250 KiB per-layer budgets. These are the _placeholder_ plates;
+  real photography will be heavier. At DPR 3 the sharp rungs step up to 1920
+  (back 79.4, mid 28.0) and fg to 1350 (133.2).
+- **The desktop cursor chunk is absent on touch.** Verified by diffing the fetched
+  chunk set: 8 chunks at 390px, 9 at 1440px, and the difference is exactly
+  `27ubzcrer78wu.js` (1.8 KiB raw / 0.8 KiB gzip), which contains `cursor__ring` and
+  `has-custom-cursor`. **Do not probe for a chunk by source filename** — Turbopack
+  hashes chunk names, so `/CustomCursor/.test(url)` is false on desktop too and looks
+  like a pass. Diff the sets instead.
+- **Scroll framerate on mobile is NOT measured and is still owed.** The browser pane
+  reports `document.hidden: false` but delivers 0 rAF ticks in 1000ms — it is not
+  being composited — so no frame timing is obtainable here, and `gsap.ticker` has no
+  reachable manual tick (`window._gsap` is a per-element cache, not the core). Static
+  screenshots and layout measurement work fine; anything frame-based does not.

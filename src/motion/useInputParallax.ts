@@ -2,10 +2,7 @@
 
 import type { RefObject } from 'react'
 
-import {
-  useOrientationVector,
-  type OrientationStatus,
-} from './useOrientationVector'
+import { useOrientationVector, type OrientationStatus } from './useOrientationVector'
 import { usePointerVector } from './usePointerVector'
 import { useVectorParallax } from './useVectorParallax'
 

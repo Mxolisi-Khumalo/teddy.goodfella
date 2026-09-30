@@ -2,8 +2,12 @@
  * The public surface of the motion layer.
  *
  * Consumers import from here. `./register` is internal: importing gsap directly from
- * a component risks using it before the plugins are registered.
+ * a component risks using it before the plugins are registered — which is exactly why
+ * the registered instance is re-exported below rather than left for a component to
+ * reach for itself.
  */
+
+export { gsap } from './register'
 
 export { CursorLayer } from './CursorLayer'
 export { LenisProvider } from './LenisProvider'
@@ -18,10 +22,7 @@ export { useMagnetic } from './useMagnetic'
 export type { MagneticOptions } from './useMagnetic'
 export { useOrientationVector } from './useOrientationVector'
 export type { OrientationStatus, OrientationVector } from './useOrientationVector'
-export {
-  useCoarsePointerCapability,
-  usePointerCapability,
-} from './usePointerCapability'
+export { useCoarsePointerCapability, usePointerCapability } from './usePointerCapability'
 export { usePointerVector } from './usePointerVector'
 export type {
   PointerVector,

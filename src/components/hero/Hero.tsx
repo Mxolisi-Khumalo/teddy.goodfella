@@ -3,7 +3,7 @@
 import { useRef } from 'react'
 
 import type { HeroLayers, MediaAsset } from '@/content'
-import { ScrollScene, useInputParallax } from '@/motion'
+import { gsap, ScrollScene, useInputParallax } from '@/motion'
 
 import { HeroNotice, type HeroNoticeContent } from './HeroNotice'
 import { HeroTilt } from './HeroTilt'
@@ -228,6 +228,10 @@ export function Hero({
       start="top top"
       end="+=220%"
       className="hero"
+      // The hero's reduced-motion state is a third composition written in CSS, not
+      // either end of the scroll, so the timeline must not be seeked — its inline
+      // styles would override the stylesheet. See globals.css.
+      staticFrame="stylesheet"
       build={(timeline, scene) => {
         const plane = (n: PlaneName) =>
           scene.querySelector<HTMLElement>(`[data-plane="${n}"]`)
@@ -241,6 +245,24 @@ export function Hero({
         const noticeEl = scene.querySelector<HTMLElement>('[data-hero="notice"]')
 
         if (back === null || mid === null || fore === null) return
+
+        // Clear the x/y channel before anything reads it.
+        //
+        // The foreground's 0% crop has to exist in CSS so the server's first paint is
+        // right, and GSAP folds ANY pre-existing offset it finds — `transform:
+        // translate()` and the independent `translate` property alike, both were
+        // measured — into its own x/y channel the first time it touches the element.
+        // Nothing in this timeline writes x/y, so that value then persisted through
+        // the whole scroll on top of the xPercent/yPercent being animated: the plane
+        // was doubly offset at 0% and sat 75px left of centre at 100%.
+        //
+        // A `set` and deliberately not a tween. The parallax layer owns x/y, so a
+        // tween would fight its quickTo every frame — which is the rule in CLAUDE.md.
+        // This writes once, at build, and never again.
+        //
+        // It was invisible on desktop only because the parallax overwrites x/y on the
+        // first pointer move. Touch has no pointer, which is how it surfaced.
+        gsap.set([back, mid, fore], { x: 0, y: 0 })
 
         // --- the crowd arrives, slowly -------------------------------------------
         // power3.out decelerates into its final value, so the crowd settles rather
@@ -376,7 +398,6 @@ export function Hero({
 
         {/* Renders on iOS only, and only until the question has been answered. */}
         <HeroTilt status={orientation} onRequest={requestOrientation} />
-      </div>
       </div>
     </ScrollScene>
   )

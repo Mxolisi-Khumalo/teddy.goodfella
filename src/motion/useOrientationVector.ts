@@ -1,27 +1,26 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { createLeanState, integrateLean } from './lean'
 import { useReducedMotion } from './ReducedMotionProvider'
-import {
-  useCoarsePointerCapability,
-  usePointerCapability,
-} from './usePointerCapability'
+import { useCoarsePointerCapability, usePointerCapability } from './usePointerCapability'
 import type { Vector2, VectorSource } from './usePointerVector'
 import { useGSAP } from './register'
 
 /**
- * Where the visitor is in the permission flow. A union rather than a pair of
- * booleans because the states are genuinely exclusive and each one renders something
+ * Where the visitor is in the permission flow. A union rather than a set of booleans
+ * because the states are genuinely exclusive and each one renders something
  * different: `prompt` shows an affordance, `denied` shows nothing and must never ask
  * again, `unsupported` must not even hint that tilting is a thing.
+ *
+ * `checking` is distinct from `unsupported` on purpose. They would be interchangeable
+ * for the affordance, which renders nothing either way, but not for a consumer that
+ * substitutes something when the sensor is absent — collapsing them would make that
+ * substitute flash for a frame on every device that then turns out to have one.
  */
 export type OrientationStatus =
-  | 'unsupported'
-  | 'prompt'
-  | 'requesting'
-  | 'granted'
-  | 'denied'
+  'unsupported' | 'checking' | 'prompt' | 'requesting' | 'granted' | 'denied'
 
 export interface OrientationVector {
   /** Normalised -1..1 lean, relative to how the phone is currently being held. */
@@ -37,50 +36,19 @@ export interface OrientationVector {
   readonly request: () => void
 }
 
-/**
- * Degrees of lean that map to the full -1..1 range.
- *
- * 16 is about a comfortable wrist rotation — enough that a deliberate tilt reaches
- * the extreme, small enough that the parallax responds to the way a phone moves
- * while someone is just holding it. A larger range makes the effect feel dead; a
- * smaller one makes it twitchy and seasick.
- */
-const RANGE_DEGREES = 16
-
-/**
- * How fast the neutral point follows the visitor, per sample.
- *
- * This is the important constant and it is not a smoothing filter — it is what makes
- * the effect respond to *change* in how the phone is held rather than to absolute
- * attitude. Two things break without it:
- *
- *  1. Nobody holds a phone flat. Reading posture is 45-70 degrees of beta, so
- *     normalising against zero would pin the hero to its extreme offset on load and
- *     leave it there. The neutral point has to be wherever the visitor already is.
- *  2. Device orientation drifts, and so does a human arm over the course of a scroll.
- *     A baseline captured once at mount is wrong within seconds.
- *
- * At roughly 60Hz this is a ~4s time constant: a flick of the wrist registers in
- * full, a sustained tilt decays back to centre rather than parking the image at the
- * edge. NEEDS A PASS ON REAL HARDWARE — like the cursor's spring lag, this is a feel
- * judgement I cannot make from a desktop with no sensor.
- */
-const RECENTRE_RATE = 0.004
-
-/** Light low-pass, per sample. Kills single-sample sensor spikes. ~0.09s constant. */
-const SMOOTHING = 0.18
-
 /** iOS 13+ gates the sensor behind a static method that is not in lib.dom. */
 interface PermissionGate {
   requestPermission: () => Promise<'granted' | 'denied'>
 }
 
 /**
- * Returns the iOS permission gate if this browser has one, else null.
+ * Returns the permission gate if this browser has one, else null.
  *
- * Null is genuinely ambiguous and both meanings are handled: either the browser has
- * no sensor at all, or it has one that needs no permission (Android Chrome). The
- * caller distinguishes them by whether `DeviceOrientationEvent` exists.
+ * NOT an iOS test, though it was written as one. Measured in Chrome 141: it exposes
+ * `DeviceOrientationEvent.requestPermission` as well, and resolves `'denied'` rather
+ * than rejecting when the sensor permission is unavailable. So the gate is the
+ * general case and "no gate" is the legacy one — which is why `requestSensorState`
+ * below exists, to keep the tap-to-enable control off screens that do not need it.
  */
 function permissionGate(): PermissionGate | null {
   if (typeof window === 'undefined') {
@@ -104,13 +72,35 @@ function hasSensorApi(): boolean {
   return typeof window !== 'undefined' && 'DeviceOrientationEvent' in window
 }
 
-/** Shortest signed distance between two angles, so 179 -> -179 is 2 and not -358. */
-function wrapDegrees(delta: number): number {
-  return (((delta + 180) % 360) + 360) % 360 - 180
-}
+/**
+ * Reads the already-decided sensor permission WITHOUT asking for it.
+ *
+ * This is the difference between a hero that just works and one that demands a tap
+ * first. Chrome auto-grants the gyroscope on a secure same-origin context, so
+ * querying finds `granted` and the effect can attach with no affordance and no
+ * interaction — while iOS, which does not expose `gyroscope` to the Permissions API
+ * at all, throws and falls through to the tap path where it genuinely belongs.
+ *
+ * `query` is passive by specification: it reports state and never prompts. That is
+ * what keeps this compatible with "no permission prompt on load".
+ *
+ * `'gyroscope'` is absent from lib.dom's `PermissionName`, so the cast is unavoidable
+ * — and a browser that does not recognise the name rejects, which is handled.
+ */
+async function requestSensorState(): Promise<PermissionState | null> {
+  if (typeof navigator === 'undefined' || navigator.permissions === undefined) {
+    return null
+  }
 
-function clampUnit(value: number): number {
-  return value < -1 ? -1 : value > 1 ? 1 : value
+  try {
+    const status = await navigator.permissions.query({
+      name: 'gyroscope' as PermissionName,
+    })
+
+    return status.state
+  } catch {
+    return null
+  }
 }
 
 function screenAngle(): number {
@@ -138,10 +128,23 @@ function screenAngle(): number {
  * what the seam is for.
  *
  * PERMISSION
- * Nothing is requested on load. On Android the sensor needs no permission and
- * attaches immediately; on iOS `status` is `prompt` and stays there until a caller
- * invokes `request()` from a real user gesture. A refusal is terminal for the
- * session — iOS will not re-prompt, so asking again would spend a tap on nothing.
+ * Nothing is requested on load. What happens instead, in order:
+ *
+ *   1. No gate at all (older Android browsers) — attach immediately.
+ *   2. Gate present — passively READ the decision via the Permissions API, which by
+ *      specification never prompts. Chrome auto-grants the gyroscope on a secure
+ *      same-origin context, so this is where Android lands: sensor attached, no
+ *      affordance, no interaction.
+ *   3. Permissions API does not know the name (iOS) or reports `prompt` — `status`
+ *      becomes `prompt` and stays there until a caller invokes `request()` from a
+ *      real user gesture.
+ *
+ * A refusal is terminal for the session. Neither iOS nor Chrome will re-prompt, so
+ * asking twice would spend a tap on a dialog that never opens.
+ *
+ * Measured in Chrome 141 under touch emulation: the passive query answers `denied`
+ * (no sensor hardware behind the emulator), the control never renders, and the hero
+ * is the static composition — which is the same path a real refusal takes.
  */
 export function useOrientationVector(): OrientationVector {
   const vector = useRef<Vector2>({ x: 0, y: 0 })
@@ -155,26 +158,59 @@ export function useOrientationVector(): OrientationVector {
    * the `x`/`y` channel on the hero planes there, and two `quickTo` instances writing
    * one transform component would fight every frame.
    */
-  const eligible =
-    isCoarse && !hasFinePointer && !prefersReducedMotion && hasSensorApi()
+  const eligible = isCoarse && !hasFinePointer && !prefersReducedMotion && hasSensorApi()
 
-  const [granted, setGranted] = useState(false)
-  const [denied, setDenied] = useState(false)
-  const [requesting, setRequesting] = useState(false)
+  /**
+   * One state variable, because these are stages of a single decision rather than
+   * independent flags — and three booleans would permit `granted && denied`.
+   * `checking` is the initial value so nothing renders during step 2 below; without
+   * it Android would flash a tap-to-enable control for one frame before the passive
+   * query came back granted.
+   */
+  const [decision, setDecision] = useState<
+    'checking' | 'prompt' | 'requesting' | 'granted' | 'denied'
+  >('checking')
 
-  // Read during render rather than stored in state: it is a property of the browser,
-  // not of this component, and it cannot change.
+  // Both read during render rather than stored: they are properties of the browser
+  // and the device, not of this component.
   const gated = eligible && permissionGate() !== null
 
   const status: OrientationStatus = !eligible
     ? 'unsupported'
-    : denied
-      ? 'denied'
-      : granted || !gated
-        ? 'granted'
-        : requesting
-          ? 'requesting'
-          : 'prompt'
+    : // No gate means no permission to ask for. Derived rather than pushed into
+      // state, which keeps the effect below free of a synchronous setState.
+      !gated
+      ? 'granted'
+      : decision
+
+  // Step 2: read the existing decision without asking for one.
+  useEffect(() => {
+    if (!gated) {
+      return
+    }
+
+    let cancelled = false
+
+    void requestSensorState().then((state) => {
+      if (cancelled) return
+
+      // Guarded update: a visitor fast enough to tap before this resolves has
+      // already produced a better answer than the query can give.
+      setDecision((current) =>
+        current !== 'checking'
+          ? current
+          : state === 'granted'
+            ? 'granted'
+            : state === 'denied'
+              ? 'denied'
+              : 'prompt',
+      )
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [gated])
 
   const request = useCallback(() => {
     const gate = permissionGate()
@@ -183,24 +219,17 @@ export function useOrientationVector(): OrientationVector {
       return
     }
 
-    setRequesting(true)
+    setDecision('requesting')
 
     gate
       .requestPermission()
       .then((result) => {
-        if (result === 'granted') {
-          setGranted(true)
-        } else {
-          setDenied(true)
-        }
+        setDecision(result === 'granted' ? 'granted' : 'denied')
       })
       // A rejection is a refusal: iOS rejects when the call did not originate in a
       // user gesture, and there is no second chance either way.
       .catch(() => {
-        setDenied(true)
-      })
-      .finally(() => {
-        setRequesting(false)
+        setDecision('denied')
       })
   }, [])
 
@@ -215,74 +244,35 @@ export function useOrientationVector(): OrientationVector {
         return
       }
 
-      // Baselines are captured from the first reading, not assumed. null means "not
-      // yet seen a sample".
-      let baseBeta: number | null = null
-      let baseGamma: number | null = null
+      // Baselines are captured from the first reading, not assumed — see lean.ts.
+      const lean = createLeanState()
       let angle = screenAngle()
 
       const onOrientation = (event: DeviceOrientationEvent) => {
         const { beta, gamma } = event
 
-        // Null on a device that reports the event but has no gyroscope. Bail rather
+        // Null on a device that reports the event but has no gyroscope. Measured:
+        // Chrome fires exactly one such event after a denied permission. Bail rather
         // than treating a missing axis as zero, which would read as a hard lean.
         if (beta === null || gamma === null) {
           return
         }
 
-        if (baseBeta === null || baseGamma === null) {
-          baseBeta = beta
-          baseGamma = gamma
-          return
-        }
-
-        const dBeta = wrapDegrees(beta - baseBeta)
-        const dGamma = wrapDegrees(gamma - baseGamma)
-
-        // Follow the visitor's neutral point slowly. See RECENTRE_RATE.
-        baseBeta += dBeta * RECENTRE_RATE
-        baseGamma += dGamma * RECENTRE_RATE
-
-        // beta and gamma are expressed in the device's natural frame, so they swap
-        // and change sign as the screen rotates. Without this a phone held in
-        // landscape gets its parallax axes transposed.
-        //
-        // Portrait is verified; the landscape cases are the conventional mapping and
-        // are not verified on hardware. A sign error there inverts the direction of
-        // an 8px offset, which is why this is worth shipping unverified.
-        let x: number
-        let y: number
-
-        if (angle === 90) {
-          x = -dBeta
-          y = dGamma
-        } else if (angle === 180) {
-          x = -dGamma
-          y = -dBeta
-        } else if (angle === 270 || angle === -90) {
-          x = dBeta
-          y = -dGamma
-        } else {
-          x = dGamma
-          y = dBeta
-        }
-
-        const targetX = clampUnit(x / RANGE_DEGREES)
-        const targetY = clampUnit(y / RANGE_DEGREES)
+        integrateLean(lean, beta, gamma, angle)
 
         // Assignment only — no measurement, no layout read, no setState. Identical
         // discipline to the pointer handler: the rAF throttle lands downstream, in
         // useVectorParallax's ticker callback.
-        vector.current.x += (targetX - vector.current.x) * SMOOTHING
-        vector.current.y += (targetY - vector.current.y) * SMOOTHING
+        vector.current.x = lean.x
+        vector.current.y = lean.y
       }
 
       // Rotating the device changes the axis mapping AND invalidates the baseline,
       // since the visitor's grip has physically changed. Re-capture both.
       const onScreenChange = () => {
         angle = screenAngle()
-        baseBeta = null
-        baseGamma = null
+        lean.baseBeta = null
+        lean.baseGamma = null
       }
 
       window.addEventListener('deviceorientation', onOrientation, { passive: true })
