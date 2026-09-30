@@ -3,9 +3,10 @@
 import { useRef } from 'react'
 
 import type { HeroLayers, MediaAsset } from '@/content'
-import { ScrollScene, useCursorParallax } from '@/motion'
+import { ScrollScene, useInputParallax } from '@/motion'
 
 import { HeroNotice, type HeroNoticeContent } from './HeroNotice'
+import { HeroTilt } from './HeroTilt'
 
 /**
  * The 2.5D stage-to-crowd scroll reveal (PROJECT.md section 4).
@@ -125,7 +126,13 @@ function Plane({
     name === 'back' ? { backgroundImage: `url("${asset.blurDataUrl}")` } : undefined
 
   return (
-    <div className="hero-plane" data-plane={name} style={blurBackground}>
+    <div
+      className="hero-plane"
+      data-plane={name}
+      // Puts the cursor into its media state: an aperture, nothing to click.
+      data-cursor="media"
+      style={blurBackground}
+    >
       <picture>
         {asset.sources.map((source) => (
           <source
@@ -205,7 +212,14 @@ export function Hero({
   })
 
   // Counter-parallax keyed off data-plane, amplitudes tweened by the timeline below.
-  useCursorParallax({ scope: stageRef, attribute: 'data-plane', amplitudes: amplitude })
+  // Cursor on a desktop, device tilt on a phone — one consumer, and the component
+  // does not know or care which input is driving it. All it needs back is the
+  // permission status, because on iOS the sensor requires something to tap.
+  const { orientation, requestOrientation } = useInputParallax({
+    scope: stageRef,
+    attribute: 'data-plane',
+    amplitudes: amplitude,
+  })
 
   return (
     <ScrollScene
@@ -272,7 +286,7 @@ export function Hero({
         // The crop offset MUST live on xPercent/yPercent, not on x/y, and must be
         // stated explicitly here rather than inherited from CSS. Two reasons, both
         // found by measurement:
-        //   - useCursorParallax owns the x/y channel. At 0% this plane's amplitude is
+        //   - the parallax layer owns the x/y channel. At 0% this plane's amplitude is
         //     0, so the cursor writes x = 0 — which silently erased a crop expressed
         //     as x and left the figure centred, destroying the whole first-person
         //     read. xPercent is a separate transform component, so the two coexist.
@@ -359,6 +373,10 @@ export function Hero({
         <div className="hero__notice" data-hero="notice">
           <HeroNotice content={notice} />
         </div>
+
+        {/* Renders on iOS only, and only until the question has been answered. */}
+        <HeroTilt status={orientation} onRequest={requestOrientation} />
+      </div>
       </div>
     </ScrollScene>
   )

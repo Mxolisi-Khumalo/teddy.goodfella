@@ -1,4 +1,9 @@
+'use client'
+
+import { useRef } from 'react'
+
 import type { Event } from '@/content'
+import { useMagnetic } from '@/motion'
 
 /**
  * What the hero's final state hands over to: the engagement detail and the action.
@@ -38,6 +43,31 @@ function Stamp({ label }: { label: string }) {
 }
 
 /**
+ * The hero's only call to action, and therefore the only magnetic element on the
+ * page. Magnetism on more than the primary action would stop reading as emphasis.
+ *
+ * `data-magnetic` lets the stylesheet cancel the lean under `:focus-visible` — a
+ * focused control that drifts is a control a keyboard user cannot reliably hit.
+ */
+function MagneticAction({
+  href,
+  children,
+}: {
+  readonly href: string
+  readonly children: string
+}) {
+  const ref = useRef<HTMLAnchorElement>(null)
+
+  useMagnetic({ target: ref })
+
+  return (
+    <a ref={ref} className="hero-notice__action" data-magnetic href={href}>
+      {children}
+    </a>
+  )
+}
+
+/**
  * Sits on an opaque surface rather than directly over photography: the brief requires
  * this to stay legible at 100%, and the plate underneath is a crowd shot whose
  * luminance moves as it scales and sharpens. An opaque ground is the only way to hold
@@ -57,9 +87,7 @@ export function HeroNotice({ content }: { content: HeroNoticeContent }) {
         <div className="hero-notice__actions">
           <Stamp label={event.status === 'sold-out' ? 'SOLD OUT' : 'CONFIRMED'} />
           {event.ticketUrl !== null && (
-            <a className="hero-notice__action" href={event.ticketUrl}>
-              Book tickets
-            </a>
+            <MagneticAction href={event.ticketUrl}>Book tickets</MagneticAction>
           )}
         </div>
       </div>
@@ -84,9 +112,9 @@ export function HeroNotice({ content }: { content: HeroNoticeContent }) {
         </>
       )}
       <div className="hero-notice__actions">
-        <a className="hero-notice__action" href={`mailto:${bookingEmail}`}>
+        <MagneticAction href={`mailto:${bookingEmail}`}>
           Enquire about a booking
-        </a>
+        </MagneticAction>
       </div>
     </div>
   )

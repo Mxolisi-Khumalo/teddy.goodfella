@@ -3,6 +3,9 @@
 /* Per-platform metric-matched fallbacks. Generated — see the file header. */
 @import './font-fallbacks.generated.css';
 
+/* Desktop cursor language. Every rule inside is gated on (pointer: fine). */
+@import './cursor.css';
+
 /* Design tokens live here, in CSS, not in a JS config file.
  *
  * The five role values are emitted server-side as custom properties by
