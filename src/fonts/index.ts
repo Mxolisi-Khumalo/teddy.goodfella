@@ -11,12 +11,19 @@ import localFont from 'next/font/local'
  * `display: 'swap'` is Next's default for the local loader but is stated explicitly
  * here — it is a requirement, not a preference, and a default can change.
  *
- * `adjustFontFallback` is doing the CLS work. For the local loader it takes
- * `'Arial' | 'Times New Roman' | false`, and Next generates a second @font-face named
- * `'<family> Fallback'` carrying size-adjust, ascent-override, descent-override and
- * line-gap-override computed by fontkit from the real binary, spliced into the stack
- * ahead of the `fallback` array. Those numbers are not hand-maintained, which is the
- * point — hand-written metrics rot the moment a face is re-subset.
+ * `adjustFontFallback` is DISABLED on every face here, deliberately.
+ *
+ * It only accepts 'Arial' | 'Times New Roman', and the face it generates is
+ * `src: local("Arial")`. Neither font exists on Android — the device CLAUDE.md's perf
+ * budget is measured on — so there the generated face never resolves, its overrides
+ * never apply, and the swap shifts layout with exactly the CLS they were meant to
+ * prevent. It fails silently, and only on the device that matters.
+ *
+ * Replaced by per-platform faces in `src/app/font-fallbacks.generated.css`, generated
+ * by `scripts/generate-font-fallbacks.mjs` from real metrics — @capsizecss/unpack
+ * reads the subset woff2, @capsizecss/metrics supplies the system tables. The
+ * `fallback` arrays below list them Android-first so each platform resolves the
+ * system face it actually has.
  */
 
 /**
@@ -40,13 +47,12 @@ export const displayFont = localFont({
   display: 'swap',
   preload: true,
   variable: '--font-display',
-  // Redaction is a high-contrast SLAB SERIF, not the condensed grotesque PROJECT.md
-  // §5 originally described — see the note at the bottom of this file. So the
-  // fallback stack is serif and adjustFontFallback matches against Times, not Arial:
-  // a condensed sans substituting for a slab serif reflows the 96px headline on swap,
+  // Redaction is a high-contrast slab serif (PROJECT.md §5), so the fallback stack is
+  // serif: a condensed sans substituting for it reflows the 96px headline on swap,
   // which is CLS the budget cannot absorb.
-  fallback: ['Georgia', 'Times New Roman', 'serif'],
-  adjustFontFallback: 'Times New Roman',
+  // Android first: it is the budget device and the one Next cannot target at all.
+  fallback: ['Redaction Fallback Noto', 'Redaction Fallback Times', 'serif'],
+  adjustFontFallback: false,
 })
 
 /**
@@ -66,8 +72,12 @@ export const displayDegradedFont = localFont({
   display: 'swap',
   preload: false,
   variable: '--font-display-degraded',
-  fallback: ['Georgia', 'Times New Roman', 'serif'],
-  adjustFontFallback: 'Times New Roman',
+  fallback: [
+    'Redaction Degraded Fallback Noto',
+    'Redaction Degraded Fallback Times',
+    'serif',
+  ],
+  adjustFontFallback: false,
 })
 
 /**
@@ -91,20 +101,13 @@ export const bodyFont = localFont({
   display: 'swap',
   preload: false,
   variable: '--font-body',
-  fallback: ['Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
-  adjustFontFallback: 'Arial',
+  fallback: ['Public Sans Fallback Roboto', 'Public Sans Fallback Arial', 'sans-serif'],
+  adjustFontFallback: false,
 })
 
 /**
- * DRIFT, flagged rather than silently accepted.
- *
- * PROJECT.md §5 asks the display family to be "a condensed grotesque with signage or
- * bureaucratic character". Redaction is neither: it is a high-contrast slab serif
- * drawn from 19th-century wood type. The §5 sign-off named Redaction explicitly and
- * is the later, more specific instruction, so it governs — but §5's own type
- * paragraph still says "condensed grotesque", and a session months from now will read
- * that and think the implementation drifted.
- *
- * §5's type line should be updated to describe what was actually chosen, the same way
- * §4's crowd viewpoint was corrected once the wrong plate had been shot.
+ * PROJECT.md §5 now names Redaction explicitly as "a serif with graded
+ * print-degradation levels" and states that it supersedes the earlier "condensed
+ * grotesque" direction, so spec and implementation agree. The fallback stacks below
+ * are serif for exactly that reason.
  */
